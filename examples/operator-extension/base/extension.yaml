@@ -1,0 +1,29 @@
+apiVersion: operator.gardener.cloud/v1alpha1
+kind: Extension
+metadata:
+  name: gardener-extension-envoy-gateway
+spec:
+  deployment:
+    admission:
+      runtimeCluster:
+        helm:
+          ociRepository:
+            ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/admission-envoy-gateway-runtime:latest
+      virtualCluster:
+        helm:
+          ociRepository:
+            ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/admission-envoy-gateway-application:latest
+    extension:
+      helm:
+        ociRepository:
+          ref: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/gardener-extension-envoy-gateway:latest
+  resources:
+  - kind: Extension
+    type: envoy-gateway
+    workerlessSupported: false
+    clusterCompatibility:
+      - shoot
+    lifecycle:
+      reconcile: AfterKubeAPIServer
+      delete: BeforeKubeAPIServer
+      migrate: AfterKubeAPIServer

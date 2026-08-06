@@ -1,0 +1,22 @@
+---
+apiVersion: core.gardener.cloud/v1beta1
+kind: ControllerRegistration
+metadata:
+  name: gardener-extension-envoy-gateway
+  annotations:
+    security.gardener.cloud/pod-security-enforce: baseline
+spec:
+  deployment:
+    policy: OnDemand
+    deploymentRefs:
+      - name: gardener-extension-envoy-gateway
+  resources:
+    - kind: Extension
+      type: envoy-gateway
+      workerlessSupported: false
+      clusterCompatibility:
+        - shoot
+      lifecycle:
+        reconcile: AfterKubeAPIServer
+        delete: BeforeKubeAPIServer
+        migrate: BeforeKubeAPIServer

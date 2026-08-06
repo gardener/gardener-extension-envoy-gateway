@@ -1,0 +1,42 @@
+apiVersion: operator.gardener.cloud/v1alpha1
+kind: Extension
+metadata:
+  name: gardener-extension-envoy-gateway
+  annotations:
+    security.gardener.cloud/pod-security-enforce: baseline
+spec:
+  deployment:
+    admission:
+      runtimeCluster: {}
+      values:
+        image:
+          repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/gardener-extension-envoy-gateway
+          tag: latest
+      virtualCluster: {}
+    extension:
+      values:
+        image:
+          repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/gardener-extension-envoy-gateway
+          tag: latest
+        replicaCount: 1
+        resources:
+          requests:
+            cpu: 30m
+            memory: 128Mi
+        vpa:
+          enabled: true
+          resourcePolicy:
+            minAllowed:
+              memory: 64Mi
+          updatePolicy:
+            updateMode: Recreate
+  resources:
+  - kind: Extension
+    type: envoy-gateway
+    workerlessSupported: false
+    clusterCompatibility:
+    - shoot
+    lifecycle:
+      reconcile: AfterKubeAPIServer
+      delete: BeforeKubeAPIServer
+      migrate: AfterKubeAPIServer

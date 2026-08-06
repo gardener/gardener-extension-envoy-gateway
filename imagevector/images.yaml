@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+---
+images:
+- name: envoy-gateway
+  resourceId:
+    name: envoy-gateway
+  sourceRepository: github.com/envoyproxy/gateway
+  repository: docker.io/envoyproxy/gateway
+  tag: "v1.8.2"

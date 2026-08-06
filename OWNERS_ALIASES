@@ -1,0 +1,15 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  gardener-extension-envoy-gateway-reviewers:
+  - domdom82
+  - axel7born
+  - DockToFuture
+  - ScheererJ
+  - anluerz
+  gardener-extension-envoy-gateway-approvers:
+  - domdom82
+  - axel7born
+  - DockToFuture
+  - ScheererJ
+  - anluerz

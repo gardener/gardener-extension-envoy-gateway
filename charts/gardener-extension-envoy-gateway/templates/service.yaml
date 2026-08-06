@@ -1,0 +1,24 @@
+{{- if and .Values.service.create .Values.extension.metrics.enable_scraping -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.extension.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.extension.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    networking.resources.gardener.cloud/from-all-seed-scrape-targets-allowed-ports: '[{"port":{{ .Values.extension.metrics.bind_address | trimPrefix ":" }},"protocol":"TCP"}]'
+    networking.resources.gardener.cloud/namespace-selectors: '[{"matchLabels":{"kubernetes.io/metadata.name":"garden"}}]'
+    networking.resources.gardener.cloud/pod-label-selector-namespace-alias: extensions
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: metrics
+      port: {{ .Values.extension.metrics.bind_address | trimPrefix ":" }}
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ .Values.extension.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end}}
