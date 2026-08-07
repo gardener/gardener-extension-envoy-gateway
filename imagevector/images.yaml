@@ -8,5 +8,5 @@ images:
   resourceId:
     name: envoy-gateway
   sourceRepository: github.com/envoyproxy/gateway
-  repository: docker.io/envoyproxy/gateway
+  repository: europe-docker.pkg.dev/gardener-project/releases/3rd/envoyproxy/gateway
   tag: "v1.8.2"
