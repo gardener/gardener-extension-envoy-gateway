@@ -2,7 +2,6 @@
 
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/gardener-extension-envoy-gateway)](https://api.reuse.software/info/github.com/gardener/gardener-extension-envoy-gateway)
 [![Build](https://github.com/gardener/gardener-extension-envoy-gateway/actions/workflows/build-and-test.yaml/badge.svg)](https://github.com/gardener/gardener-extension-envoy-gateway/actions/workflows/build-and-test.yaml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gardener/gardener-extension-envoy-gateway)](https://goreportcard.com/report/github.com/gardener/gardener-extension-envoy-gateway)
 
 This extension implements [GEP-68](https://github.com/gardener/enhancements/pull/69). It ships
 [Envoy Gateway](https://gateway.envoyproxy.io/) as the
