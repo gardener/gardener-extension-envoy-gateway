@@ -76,7 +76,7 @@ copy lives at
 
 | Component            | Version |
 |----------------------|---------|
-| Envoy Gateway        | v1.8.2  |
+| Envoy Gateway        | v1.8.3  |
 | Gateway API CRDs     | v1.5.1  |
 
 The CRD YAML manifests are downloaded once and embedded under
