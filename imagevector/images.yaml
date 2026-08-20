@@ -9,4 +9,4 @@ images:
     name: envoy-gateway
   sourceRepository: github.com/envoyproxy/gateway
   repository: europe-docker.pkg.dev/gardener-project/releases/3rd/envoyproxy/gateway
-  tag: "v1.8.3"
+  tag: "v1.9.0"
