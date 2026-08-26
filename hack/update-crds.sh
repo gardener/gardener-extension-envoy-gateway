@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# SPDX-FileCopyrightText: Copyright Contributors to the Gardener project
+# SPDX-FileCopyrightText: Contributors to the Gardener project
 # SPDX-License-Identifier: Apache-2.0
 #
 # Refreshes the embedded CRD YAML assets used by pkg/envoygateway/deployer.go.
