@@ -950,9 +950,6 @@ func (d *Deployer) networkPolicy() *networkingv1.NetworkPolicy {
 //     for non-root pods to expose Service :80 as targetPort :10080
 //   - 10443/TCP — the shifted-up HTTPS listener envoy-gateway configures
 //     for non-root pods to expose Service :443 as targetPort :10443.
-//     Without it, TLS Gateways are silently broken: the LoadBalancer
-//     accepts the TCP connection but Gardener's default-deny policy drops
-//     the packets before they reach the proxy, so the handshake resets.
 //   - 19003/TCP — the readiness probe port envoy-gateway itself exposes
 //     on the envoy proxy pod for the LB health check to succeed
 func (d *Deployer) networkPolicyForEnvoyProxies() *networkingv1.NetworkPolicy {
