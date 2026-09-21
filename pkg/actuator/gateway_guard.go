@@ -87,6 +87,7 @@ func (r *realGatewayLister) ClearGatewayClassFinalizer(ctx context.Context, seed
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
+
 		return fmt.Errorf("failed to get GatewayClass %q in shoot: %w", envoygateway.GatewayClassName, err)
 	}
 

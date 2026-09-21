@@ -373,6 +373,7 @@ func (a *Actuator) checkNoUserGateways(ctx context.Context, logger logr.Logger, 
 		if err := a.gatewayLister.ClearGatewayClassFinalizer(ctx, clusterName); err != nil {
 			logger.Error(err, "failed to clear GatewayClass finalizer during shoot deletion; continuing", "cluster", clusterName)
 		}
+
 		return nil
 	}
 

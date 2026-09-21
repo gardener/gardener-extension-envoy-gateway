@@ -32,6 +32,7 @@ func (f *fakeLister) ListGateways(_ context.Context, _ string) ([]string, error)
 
 func (f *fakeLister) ClearGatewayClassFinalizer(_ context.Context, seedNamespace string) error {
 	f.clearedNamespaces = append(f.clearedNamespaces, seedNamespace)
+
 	return f.clearErr
 }
 
