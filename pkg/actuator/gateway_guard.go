@@ -10,10 +10,10 @@ import (
 
 	extensionsconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
 	extensionsutil "github.com/gardener/gardener/extensions/pkg/util"
+	"github.com/gardener/gardener/pkg/controllerutils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/gardener/gardener-extension-envoy-gateway/pkg/envoygateway"
@@ -91,13 +91,7 @@ func (r *realGatewayLister) ClearGatewayClassFinalizer(ctx context.Context, seed
 		return fmt.Errorf("failed to get GatewayClass %q in shoot: %w", envoygateway.GatewayClassName, err)
 	}
 
-	if !controllerutil.ContainsFinalizer(gwc, gatewayExistsFinalizer) {
-		return nil
-	}
-
-	patch := client.MergeFrom(gwc.DeepCopy())
-	controllerutil.RemoveFinalizer(gwc, gatewayExistsFinalizer)
-	if err := shootClient.Patch(ctx, gwc, patch); err != nil {
+	if err := controllerutils.RemoveFinalizers(ctx, shootClient, gwc, gatewayExistsFinalizer); err != nil {
 		return fmt.Errorf("failed to clear %q finalizer from GatewayClass %q: %w", gatewayExistsFinalizer, envoygateway.GatewayClassName, err)
 	}
 
