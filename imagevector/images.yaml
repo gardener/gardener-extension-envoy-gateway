@@ -17,4 +17,6 @@ images:
 - name: gardener-extension-envoy-gateway
   sourceRepository: github.com/gardener/gardener-extension-envoy-gateway
   repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/gardener-extension-envoy-gateway
-  tag: "latest"
+  # Must be a (relaxed) SemVer, not "latest": the release pipeline uses this tag as
+  # the resource version in the component descriptor and rejects non-SemVer values.
+  tag: "v0.2.0-dev"
