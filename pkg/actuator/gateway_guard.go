@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/gardener/pkg/controllerutils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,6 +58,11 @@ type GatewayLister interface {
 	// WaitUntilGatewaysDeleted blocks until no Gateway objects remain in the
 	// shoot, or the context is done.
 	WaitUntilGatewaysDeleted(ctx context.Context, seedNamespace string) error
+
+	// WaitUntilGatewayCreationBlocked blocks until a dry-run create of a Gateway
+	// for the extension's GatewayClass is forbidden, i.e. the block-gateway-creation
+	// policy is enforcing, or the context deadline is reached.
+	WaitUntilGatewayCreationBlocked(ctx context.Context, seedNamespace string) error
 }
 
 // realGatewayLister builds a shoot client from the seed and lists Gateway
@@ -85,8 +91,10 @@ func (r *realGatewayLister) ListGateways(ctx context.Context, seedNamespace stri
 	return names, nil
 }
 
-// fetchGatewayList builds a shoot-scoped client and returns the raw GatewayList.
-// The delete guard derives from it.
+// fetchGatewayList builds a shoot-scoped client and returns the Gateways bound
+// to this extension's GatewayClass. Gateways of other GatewayClasses are not
+// ours and must not block the extension's delete/disable, so they are filtered
+// out. The delete guard derives from this.
 func (r *realGatewayLister) fetchGatewayList(ctx context.Context, seedNamespace string) (*gatewayapiv1.GatewayList, error) {
 	shootClient, err := r.shootClient(ctx, seedNamespace)
 	if err != nil {
@@ -106,7 +114,22 @@ func (r *realGatewayLister) fetchGatewayList(ctx context.Context, seedNamespace 
 		return nil, fmt.Errorf("failed to list Gateways in shoot: %w", err)
 	}
 
+	list.Items = filterManagedGateways(list.Items)
+
 	return list, nil
+}
+
+// filterManagedGateways keeps only Gateways bound to this extension's
+// GatewayClass; Gateways of other GatewayClasses are not ours.
+func filterManagedGateways(items []gatewayapiv1.Gateway) []gatewayapiv1.Gateway {
+	ours := items[:0]
+	for _, g := range items {
+		if string(g.Spec.GatewayClassName) == envoygateway.GatewayClassName {
+			ours = append(ours, g)
+		}
+	}
+
+	return ours
 }
 
 // gatewayCRDAbsent reports whether a List error means the Gateway kind is not
@@ -141,16 +164,17 @@ func (r *realGatewayLister) ClearGatewayClassFinalizer(ctx context.Context, seed
 	return nil
 }
 
-// DeleteGateways deletes all Gateway objects in the shoot.
+// DeleteGateways deletes the Gateways bound to this extension's GatewayClass in
+// the shoot. Gateways of other GatewayClasses are left untouched.
 func (r *realGatewayLister) DeleteGateways(ctx context.Context, seedNamespace string) error {
 	shootClient, err := r.shootClient(ctx, seedNamespace)
 	if err != nil {
 		return err
 	}
 
-	list := &gatewayapiv1.GatewayList{}
-	if err := shootClient.List(ctx, list); err != nil {
-		return fmt.Errorf("failed to list Gateways in shoot: %w", err)
+	list, err := r.fetchGatewayList(ctx, seedNamespace)
+	if err != nil {
+		return err
 	}
 
 	for i := range list.Items {
@@ -194,6 +218,40 @@ func (r *realGatewayLister) WaitUntilGatewaysDeleted(ctx context.Context, seedNa
 	}
 
 	return ErrGatewaysStillDeleting
+}
+
+// WaitUntilGatewayCreationBlocked polls with a dry-run Gateway create (never
+// persisted) until admission forbids it, proving the block-gateway-creation
+// policy is enforcing rather than merely present.
+func (r *realGatewayLister) WaitUntilGatewayCreationBlocked(ctx context.Context, seedNamespace string) error {
+	shootClient, err := r.shootClient(ctx, seedNamespace)
+	if err != nil {
+		return err
+	}
+
+	probe := func() *gatewayapiv1.Gateway {
+		return &gatewayapiv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{GenerateName: "envoy-gateway-guard-probe-", Namespace: metav1.NamespaceDefault},
+			Spec: gatewayapiv1.GatewaySpec{
+				GatewayClassName: gatewayapiv1.ObjectName(envoygateway.GatewayClassName),
+				Listeners: []gatewayapiv1.Listener{{
+					Name:     "probe",
+					Protocol: gatewayapiv1.HTTPProtocolType,
+					Port:     gatewayapiv1.PortNumber(80),
+				}},
+			},
+		}
+	}
+
+	waitErr := wait.PollUntilContextCancel(ctx, gatewayDeletionPollInterval, true, func(ctx context.Context) (bool, error) {
+		// Forbidden = enforcing. Admitted or a transient error = keep polling.
+		return apierrors.IsForbidden(shootClient.Create(ctx, probe(), client.DryRunAll)), nil
+	})
+	if waitErr != nil {
+		return fmt.Errorf("gave up waiting for the block-gateway-creation policy to take effect: %w", waitErr)
+	}
+
+	return nil
 }
 
 func (r *realGatewayLister) shootClient(ctx context.Context, seedNamespace string) (client.Client, error) {

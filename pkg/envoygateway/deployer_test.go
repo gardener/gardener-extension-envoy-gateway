@@ -399,6 +399,53 @@ func TestFieldAbsentExpression(t *testing.T) {
 	}
 }
 
+func TestGatewayCreateGuard_BlocksOnlyOurGatewayClass(t *testing.T) {
+	policy, binding := gatewayCreateGuard()
+	if policy == nil || binding == nil {
+		t.Fatal("expected both a policy and a binding")
+	}
+	if policy.Kind != "ValidatingAdmissionPolicy" || binding.Kind != "ValidatingAdmissionPolicyBinding" {
+		t.Errorf("unexpected kinds: %q / %q", policy.Kind, binding.Kind)
+	}
+
+	// Must match CREATE of gateways in the Gateway API group only.
+	if len(policy.Spec.MatchConstraints.ResourceRules) != 1 {
+		t.Fatalf("expected one resource rule, got %d", len(policy.Spec.MatchConstraints.ResourceRules))
+	}
+	rule := policy.Spec.MatchConstraints.ResourceRules[0]
+	if want := []admissionregistrationv1.OperationType{admissionregistrationv1.Create}; !reflect.DeepEqual(rule.Operations, want) {
+		t.Errorf("expected operations %v, got %v", want, rule.Operations)
+	}
+	if !reflect.DeepEqual(rule.APIGroups, []string{APIGroupGatewayAPI}) || !reflect.DeepEqual(rule.Resources, []string{"gateways"}) {
+		t.Errorf("expected gateways in %q, got groups=%v resources=%v", APIGroupGatewayAPI, rule.APIGroups, rule.Resources)
+	}
+
+	// Exactly one validation that only rejects our GatewayClass: the expression
+	// must allow (be true) for any other class, and reference GatewayClassName.
+	if len(policy.Spec.Validations) != 1 {
+		t.Fatalf("expected one validation, got %d", len(policy.Spec.Validations))
+	}
+	expr := policy.Spec.Validations[0].Expression
+	if !strings.Contains(expr, GatewayClassName) {
+		t.Errorf("validation expression should reference %q, got: %s", GatewayClassName, expr)
+	}
+	if !strings.Contains(expr, "!= ") {
+		t.Errorf("validation should allow (pass) for other GatewayClasses via a != check, got: %s", expr)
+	}
+
+	// Fail-closed and Deny: a Fail-open or audit-only guard would let a Gateway
+	// slip through during teardown, which is exactly the race this closes.
+	if policy.Spec.FailurePolicy == nil || *policy.Spec.FailurePolicy != admissionregistrationv1.Fail {
+		t.Errorf("expected FailurePolicy Fail, got %v", policy.Spec.FailurePolicy)
+	}
+	if want := []admissionregistrationv1.ValidationAction{admissionregistrationv1.Deny}; !reflect.DeepEqual(binding.Spec.ValidationActions, want) {
+		t.Errorf("expected validationActions %v, got %v", want, binding.Spec.ValidationActions)
+	}
+	if binding.Spec.PolicyName != policy.Name {
+		t.Errorf("binding policyName %q does not match policy name %q", binding.Spec.PolicyName, policy.Name)
+	}
+}
+
 func TestEnvoyProxyDefaultsYAML_RendersDataPlaneKnobs(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.DataPlaneReplicas = ptr.To[int32](4)

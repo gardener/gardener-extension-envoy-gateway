@@ -29,6 +29,10 @@ const (
 	// delivers all Envoy Gateway resources into the shoot cluster.
 	ManagedResourceName = "extension-envoy-gateway"
 
+	// GuardManagedResourceName is the short-lived shoot-class ManagedResource
+	// delivering the Gateway-creation guard during disable.
+	GuardManagedResourceName = "extension-envoy-gateway-guard"
+
 	// ImageName is the key for the Envoy Gateway controller image in imagevector.
 	ImageName = "envoy-gateway"
 
@@ -65,6 +69,11 @@ const (
 	// its binding) that rejects dangerous EnvoyProxy fields (patch, initContainers,
 	// arbitrary volumes/volumeMounts/securityContext) at admission.
 	EnvoyProxyGuardPolicyName = "envoyproxy-deploy-guard.gardener.cloud"
+
+	// GatewayCreateGuardPolicyName names the ValidatingAdmissionPolicy (and its
+	// binding) that blocks creating Gateways for this extension's GatewayClass
+	// while the extension is being disabled.
+	GatewayCreateGuardPolicyName = "block-gateway-creation.gardener.cloud"
 
 	// DataPlaneNetworkPolicyName is the name of the per-Gateway-namespace
 	// data-plane ingress NetworkPolicy the extension reconciles directly into the
