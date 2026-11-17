@@ -162,11 +162,17 @@ const (
 	kindClusterRole = "ClusterRole"
 	// kindClusterRoleBinding is the Kubernetes Kind name for ClusterRoleBinding.
 	kindClusterRoleBinding = "ClusterRoleBinding"
+	// kindValidatingAdmissionPolicy is the Kubernetes Kind name for ValidatingAdmissionPolicy.
+	kindValidatingAdmissionPolicy = "ValidatingAdmissionPolicy"
+	// kindValidatingAdmissionPolicyBinding is the Kubernetes Kind name for ValidatingAdmissionPolicyBinding.
+	kindValidatingAdmissionPolicyBinding = "ValidatingAdmissionPolicyBinding"
 
 	// APIGroupGatewayAPI is the Gateway API resource group.
 	APIGroupGatewayAPI = "gateway.networking.k8s.io"
 	// apiGroupEnvoyGateway is the Envoy Gateway resource group.
 	apiGroupEnvoyGateway = "gateway.envoyproxy.io"
+	// resourceGateways is the Gateway API plural resource name for Gateways.
+	resourceGateways = "gateways"
 
 	// OwningGatewayNameLabel is the label envoy-gateway stamps on every
 	// per-Gateway data-plane infra object (Deployment, Service, ServiceAccount,

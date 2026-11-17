@@ -231,7 +231,7 @@ func (r *realGatewayLister) WaitUntilGatewayCreationBlocked(ctx context.Context,
 
 	probe := func() *gatewayapiv1.Gateway {
 		return &gatewayapiv1.Gateway{
-			ObjectMeta: metav1.ObjectMeta{GenerateName: "envoy-gateway-guard-probe-", Namespace: metav1.NamespaceDefault},
+			GenerateName: "envoy-gateway-guard-probe-", Namespace: metav1.NamespaceDefault,
 			Spec: gatewayapiv1.GatewaySpec{
 				GatewayClassName: gatewayapiv1.ObjectName(envoygateway.GatewayClassName),
 				Listeners: []gatewayapiv1.Listener{{

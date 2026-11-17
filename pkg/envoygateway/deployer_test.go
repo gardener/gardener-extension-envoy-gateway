@@ -136,8 +136,8 @@ func TestGenerateResources_ShipsEnvoyProxyGuardVAP(t *testing.T) {
 	}
 	body := string(vap)
 	for _, want := range []string{
-		"ValidatingAdmissionPolicy",
-		"ValidatingAdmissionPolicyBinding",
+		kindValidatingAdmissionPolicy,
+		kindValidatingAdmissionPolicyBinding,
 		"envoyDeployment",
 		"envoyDaemonSet",
 		"patch",
@@ -323,10 +323,10 @@ func TestEnvoyProxyGuard_ProducesPolicyAndBinding(t *testing.T) {
 	if policy == nil || binding == nil {
 		t.Fatal("expected both a policy and a binding")
 	}
-	if policy.Kind != "ValidatingAdmissionPolicy" {
+	if policy.Kind != kindValidatingAdmissionPolicy {
 		t.Errorf("expected policy kind ValidatingAdmissionPolicy, got %q", policy.Kind)
 	}
-	if binding.Kind != "ValidatingAdmissionPolicyBinding" {
+	if binding.Kind != kindValidatingAdmissionPolicyBinding {
 		t.Errorf("expected binding kind ValidatingAdmissionPolicyBinding, got %q", binding.Kind)
 	}
 	// Six guarded fields on two workloads → twelve validations.
@@ -404,7 +404,7 @@ func TestGatewayCreateGuard_BlocksOnlyOurGatewayClass(t *testing.T) {
 	if policy == nil || binding == nil {
 		t.Fatal("expected both a policy and a binding")
 	}
-	if policy.Kind != "ValidatingAdmissionPolicy" || binding.Kind != "ValidatingAdmissionPolicyBinding" {
+	if policy.Kind != kindValidatingAdmissionPolicy || binding.Kind != kindValidatingAdmissionPolicyBinding {
 		t.Errorf("unexpected kinds: %q / %q", policy.Kind, binding.Kind)
 	}
 

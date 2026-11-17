@@ -315,8 +315,8 @@ func TestGatewayCRDAbsent(t *testing.T) {
 func TestFilterManagedGateways_KeepsOnlyOurGatewayClass(t *testing.T) {
 	gw := func(ns, name, class string) gatewayapiv1.Gateway {
 		return gatewayapiv1.Gateway{
-			ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name},
-			Spec:       gatewayapiv1.GatewaySpec{GatewayClassName: gatewayapiv1.ObjectName(class)},
+			Namespace: ns, Name: name,
+			Spec: gatewayapiv1.GatewaySpec{GatewayClassName: gatewayapiv1.ObjectName(class)},
 		}
 	}
 

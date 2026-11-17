@@ -246,7 +246,7 @@ func (d *Deployer) DeployGuard(ctx context.Context, namespace string) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, ManagedResourceDeletionTimeout)
 	defer cancel()
 	if err := managedresources.WaitUntilHealthy(timeoutCtx, d.client, namespace, GuardManagedResourceName); err != nil {
-		return fmt.Errorf("Gateway-creation guard managed resource did not become healthy: %w", err)
+		return fmt.Errorf("gateway-creation guard managed resource did not become healthy: %w", err)
 	}
 
 	d.logger.Info("Gateway-creation guard applied", "namespace", namespace)
@@ -637,7 +637,7 @@ func (d *Deployer) clusterRole() *rbacv1.ClusterRole {
 		},
 		{
 			APIGroups: []string{APIGroupGatewayAPI},
-			Resources: []string{"gateways", "httproutes", "grpcroutes", "tcproutes", "tlsroutes", "udproutes", "referencegrants", "backendtlspolicies", "listenersets"},
+			Resources: []string{resourceGateways, "httproutes", "grpcroutes", "tcproutes", "tlsroutes", "udproutes", "referencegrants", "backendtlspolicies", "listenersets"},
 			Verbs:     []string{verbGet, verbList, verbWatch},
 		},
 		{
@@ -708,7 +708,7 @@ func (d *Deployer) netpolControllerClusterRole() *rbacv1.ClusterRole {
 	rules := []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{APIGroupGatewayAPI},
-			Resources: []string{"gateways"},
+			Resources: []string{resourceGateways},
 			Verbs:     []string{verbGet, verbList, verbWatch},
 		},
 		{
@@ -1220,7 +1220,7 @@ func envoyProxyGuard() (*admissionregistrationv1.ValidatingAdmissionPolicy, *adm
 
 	policy := &admissionregistrationv1.ValidatingAdmissionPolicy{
 		APIVersion: admissionregistrationv1.SchemeGroupVersion.String(),
-		Kind:       "ValidatingAdmissionPolicy",
+		Kind:       kindValidatingAdmissionPolicy,
 		Name:       EnvoyProxyGuardPolicyName, Labels: guardLabels,
 		Spec: admissionregistrationv1.ValidatingAdmissionPolicySpec{
 			FailurePolicy: &fail,
@@ -1243,7 +1243,7 @@ func envoyProxyGuard() (*admissionregistrationv1.ValidatingAdmissionPolicy, *adm
 
 	binding := &admissionregistrationv1.ValidatingAdmissionPolicyBinding{
 		APIVersion: admissionregistrationv1.SchemeGroupVersion.String(),
-		Kind:       "ValidatingAdmissionPolicyBinding",
+		Kind:       kindValidatingAdmissionPolicyBinding,
 		Name:       EnvoyProxyGuardPolicyName, Labels: guardLabels,
 		Spec: admissionregistrationv1.ValidatingAdmissionPolicyBindingSpec{
 			PolicyName:        EnvoyProxyGuardPolicyName,
@@ -1313,7 +1313,7 @@ func gatewayCreateGuard() (*admissionregistrationv1.ValidatingAdmissionPolicy, *
 
 	policy := &admissionregistrationv1.ValidatingAdmissionPolicy{
 		APIVersion: admissionregistrationv1.SchemeGroupVersion.String(),
-		Kind:       "ValidatingAdmissionPolicy",
+		Kind:       kindValidatingAdmissionPolicy,
 		Name:       GatewayCreateGuardPolicyName, Labels: guardLabels,
 		Spec: admissionregistrationv1.ValidatingAdmissionPolicySpec{
 			FailurePolicy: &fail,
@@ -1322,7 +1322,7 @@ func gatewayCreateGuard() (*admissionregistrationv1.ValidatingAdmissionPolicy, *
 					Operations:  []admissionregistrationv1.OperationType{admissionregistrationv1.Create},
 					APIGroups:   []string{APIGroupGatewayAPI},
 					APIVersions: []string{"*"},
-					Resources:   []string{"gateways"},
+					Resources:   []string{resourceGateways},
 				}},
 			},
 			Validations: []admissionregistrationv1.Validation{{
@@ -1337,7 +1337,7 @@ func gatewayCreateGuard() (*admissionregistrationv1.ValidatingAdmissionPolicy, *
 
 	binding := &admissionregistrationv1.ValidatingAdmissionPolicyBinding{
 		APIVersion: admissionregistrationv1.SchemeGroupVersion.String(),
-		Kind:       "ValidatingAdmissionPolicyBinding",
+		Kind:       kindValidatingAdmissionPolicyBinding,
 		Name:       GatewayCreateGuardPolicyName, Labels: guardLabels,
 		Spec: admissionregistrationv1.ValidatingAdmissionPolicyBindingSpec{
 			PolicyName:        GatewayCreateGuardPolicyName,

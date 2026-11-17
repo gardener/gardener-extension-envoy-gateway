@@ -413,7 +413,7 @@ func (a *Actuator) Delete(ctx context.Context, logger logr.Logger, ex *extension
 		if err := a.gatewayLister.WaitUntilGatewayCreationBlocked(probeCtx, clusterName); err != nil {
 			cancel()
 
-			return fmt.Errorf("Gateway-creation guard did not take effect: %w", err)
+			return fmt.Errorf("gateway-creation guard did not take effect: %w", err)
 		}
 		cancel()
 	}
