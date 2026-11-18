@@ -36,6 +36,7 @@ type fakeLister struct {
 	err   error
 
 	clearErr          error
+	clearRemoved      bool
 	clearedNamespaces []string
 
 	deleteErr         error
@@ -52,10 +53,10 @@ func (f *fakeLister) ListGateways(_ context.Context, _ string) ([]string, error)
 	return f.names, f.err
 }
 
-func (f *fakeLister) ClearGatewayClassFinalizer(_ context.Context, seedNamespace string) error {
+func (f *fakeLister) ClearGatewayClassFinalizer(_ context.Context, seedNamespace string) (bool, error) {
 	f.clearedNamespaces = append(f.clearedNamespaces, seedNamespace)
 
-	return f.clearErr
+	return f.clearRemoved, f.clearErr
 }
 
 func (f *fakeLister) DeleteGateways(_ context.Context, seedNamespace string) error {
@@ -335,5 +336,29 @@ func TestFilterManagedGateways_KeepsOnlyOurGatewayClass(t *testing.T) {
 		if string(g.Spec.GatewayClassName) != envoygateway.GatewayClassName {
 			t.Errorf("filter kept a Gateway of class %q", g.Spec.GatewayClassName)
 		}
+	}
+}
+
+func TestDeniedByGuardPolicy_DistinguishesVAPFromRBAC(t *testing.T) {
+	gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}
+
+	// A ValidatingAdmissionPolicy denial names the policy in its message.
+	vapDenial := apierrors.NewForbidden(gvr.GroupResource(), "probe",
+		errors.New("ValidatingAdmissionPolicy '"+envoygateway.GatewayCreateGuardPolicyName+"' denied request"))
+	// An RBAC authorization failure is also Forbidden, but does not name our policy.
+	rbacDenial := apierrors.NewForbidden(gvr.GroupResource(), "probe",
+		errors.New(`User "system:serviceaccount:x:y" cannot create resource "gateways"`))
+
+	if !deniedByGuardPolicy(vapDenial) {
+		t.Errorf("expected a VAP denial naming %q to count as enforcing", envoygateway.GatewayCreateGuardPolicyName)
+	}
+	if deniedByGuardPolicy(rbacDenial) {
+		t.Error("an RBAC authorization Forbidden must NOT be treated as the guard enforcing")
+	}
+	if deniedByGuardPolicy(nil) {
+		t.Error("a nil error (create admitted) must not count as enforcing")
+	}
+	if deniedByGuardPolicy(apierrors.NewNotFound(gvr.GroupResource(), "probe")) {
+		t.Error("a non-Forbidden error must not count as enforcing")
 	}
 }

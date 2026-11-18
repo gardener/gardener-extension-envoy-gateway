@@ -422,6 +422,20 @@ func (a *Actuator) Delete(ctx context.Context, logger logr.Logger, ex *extension
 		return err
 	}
 
+	// No user Gateway of our class remains, so any gateway-exists finalizer left
+	// on the GatewayClass is stray (its owning Gateway is already gone) and would
+	// otherwise silently block ManagedResource teardown. Removing it here is safe
+	// precisely because there is no owning Gateway to protect. Report it so a
+	// recurring stray finalizer is visible rather than hidden. On shoot deletion
+	// the drain path clears it instead; best-effort, so a failure only logs.
+	if disablingLiveShoot {
+		if removed, err := a.gatewayLister.ClearGatewayClassFinalizer(ctx, clusterName); err != nil {
+			logger.Error(err, "failed to check/clear a stray GatewayClass finalizer; continuing", "cluster", clusterName)
+		} else if removed {
+			logger.Info("removed a stray gateway-exists finalizer from the GatewayClass (no user Gateway owned it)", "cluster", clusterName)
+		}
+	}
+
 	// Tear down the per-shoot NetworkPolicy controller (Deployment +
 	// shoot-access secret) first, in all delete cases — a deleted Extension never
 	// keeps its controller. This must happen before pruning the policies below:
@@ -546,7 +560,7 @@ func (a *Actuator) drainUserGatewaysForShootDeletion(ctx context.Context, logger
 		logger.Info("user Gateways drained from shoot", "cluster", clusterName)
 	}
 
-	if err := a.gatewayLister.ClearGatewayClassFinalizer(ctx, clusterName); err != nil {
+	if _, err := a.gatewayLister.ClearGatewayClassFinalizer(ctx, clusterName); err != nil {
 		logger.Error(err, "failed to clear GatewayClass finalizer during shoot deletion; continuing", "cluster", clusterName)
 	} else {
 		logger.Info("cleared GatewayClass finalizer, envoy-gateway can be removed", "cluster", clusterName)

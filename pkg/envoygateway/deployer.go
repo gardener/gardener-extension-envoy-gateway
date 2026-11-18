@@ -48,6 +48,10 @@ const (
 	// ManagedResource to be deleted before timing out.
 	ManagedResourceDeletionTimeout = 2 * time.Minute
 
+	// ManagedResourceHealthTimeout is the maximum time to wait for a
+	// ManagedResource to become healthy after being applied.
+	ManagedResourceHealthTimeout = 2 * time.Minute
+
 	// GatewayGuardEnforcementTimeout bounds how long the disable path waits for
 	// the block-gateway-creation policy to start rejecting Gateway creates after
 	// its objects are applied (a policy is not enforced the instant it exists).
@@ -243,7 +247,7 @@ func (d *Deployer) DeployGuard(ctx context.Context, namespace string) error {
 		return fmt.Errorf("failed to create Gateway-creation guard managed resource: %w", err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, ManagedResourceDeletionTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, ManagedResourceHealthTimeout)
 	defer cancel()
 	if err := managedresources.WaitUntilHealthy(timeoutCtx, d.client, namespace, GuardManagedResourceName); err != nil {
 		return fmt.Errorf("gateway-creation guard managed resource did not become healthy: %w", err)

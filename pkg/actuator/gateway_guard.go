@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	extensionsconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/gardener/gardener-extension-envoy-gateway/pkg/envoygateway"
@@ -48,8 +50,10 @@ type GatewayLister interface {
 	ListGateways(ctx context.Context, seedNamespace string) ([]string, error)
 
 	// ClearGatewayClassFinalizer removes the gateway-exists finalizer from the
-	// extension's GatewayClass in the shoot.
-	ClearGatewayClassFinalizer(ctx context.Context, seedNamespace string) error
+	// extension's GatewayClass in the shoot. It reports whether the finalizer was
+	// actually present (and thus removed), so callers can surface a stray
+	// finalizer that would otherwise silently wedge teardown.
+	ClearGatewayClassFinalizer(ctx context.Context, seedNamespace string) (removed bool, err error)
 
 	// DeleteGateways deletes all Gateway objects across all namespaces in the
 	// shoot identified by the given seed-side control-plane namespace.
@@ -141,27 +145,31 @@ func gatewayCRDAbsent(err error) bool {
 
 // ClearGatewayClassFinalizer removes the gateway-exists finalizer from the
 // extension's GatewayClass so it can finish deleting once the envoy-gateway
-// control plane is gone.
-func (r *realGatewayLister) ClearGatewayClassFinalizer(ctx context.Context, seedNamespace string) error {
+// control plane is gone. It reports whether the finalizer was present.
+func (r *realGatewayLister) ClearGatewayClassFinalizer(ctx context.Context, seedNamespace string) (bool, error) {
 	shootClient, err := r.shootClient(ctx, seedNamespace)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	gwc := &gatewayapiv1.GatewayClass{}
 	if err := shootClient.Get(ctx, client.ObjectKey{Name: envoygateway.GatewayClassName}, gwc); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil
+			return false, nil
 		}
 
-		return fmt.Errorf("failed to get GatewayClass %q in shoot: %w", envoygateway.GatewayClassName, err)
+		return false, fmt.Errorf("failed to get GatewayClass %q in shoot: %w", envoygateway.GatewayClassName, err)
+	}
+
+	if !controllerutil.ContainsFinalizer(gwc, gatewayExistsFinalizer) {
+		return false, nil
 	}
 
 	if err := controllerutils.RemoveFinalizers(ctx, shootClient, gwc, gatewayExistsFinalizer); err != nil {
-		return fmt.Errorf("failed to clear %q finalizer from GatewayClass %q: %w", gatewayExistsFinalizer, envoygateway.GatewayClassName, err)
+		return false, fmt.Errorf("failed to clear %q finalizer from GatewayClass %q: %w", gatewayExistsFinalizer, envoygateway.GatewayClassName, err)
 	}
 
-	return nil
+	return true, nil
 }
 
 // DeleteGateways deletes the Gateways bound to this extension's GatewayClass in
@@ -244,14 +252,27 @@ func (r *realGatewayLister) WaitUntilGatewayCreationBlocked(ctx context.Context,
 	}
 
 	waitErr := wait.PollUntilContextCancel(ctx, gatewayDeletionPollInterval, true, func(ctx context.Context) (bool, error) {
-		// Forbidden = enforcing. Admitted or a transient error = keep polling.
-		return apierrors.IsForbidden(shootClient.Create(ctx, probe(), client.DryRunAll)), nil
+		err := shootClient.Create(ctx, probe(), client.DryRunAll)
+		// Only a denial by our policy counts as "enforcing". A bare IsForbidden
+		// is ambiguous — an RBAC authorization failure is also 403 — so match the
+		// policy name in the message to avoid mistaking a missing permission for
+		// the guard being in effect. Admitted or a transient error = keep polling.
+		return deniedByGuardPolicy(err), nil
 	})
 	if waitErr != nil {
 		return fmt.Errorf("gave up waiting for the block-gateway-creation policy to take effect: %w", waitErr)
 	}
 
 	return nil
+}
+
+// deniedByGuardPolicy reports whether err is an admission denial from this
+// extension's block-gateway-creation ValidatingAdmissionPolicy, as opposed to
+// an RBAC authorization failure (which is also Forbidden) or any other error.
+// ValidatingAdmissionPolicy denials surface the policy name in the status
+// message, so require both Forbidden and the policy name.
+func deniedByGuardPolicy(err error) bool {
+	return apierrors.IsForbidden(err) && strings.Contains(err.Error(), envoygateway.GatewayCreateGuardPolicyName)
 }
 
 func (r *realGatewayLister) shootClient(ctx context.Context, seedNamespace string) (client.Client, error) {
