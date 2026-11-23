@@ -7,34 +7,31 @@
 # Set SHELL to bash and configure options
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+GOCMD?= go
 
 ENSURE_GARDENER_MOD           := $(shell go get github.com/gardener/gardener@$$(go list -m -f "{{.Version}}" github.com/gardener/gardener))
 GARDENER_HACK_DIR             := $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
-
-GOCMD?= go
-SRC_ROOT := $(shell git rev-parse --show-toplevel)
-HACK_DIR := $(SRC_ROOT)/hack
-SRC_DIRS := $(shell $(GOCMD) list -f '{{ .Dir }}' ./...)
-REPO_ROOT                     := $(SRC_ROOT)
-
-GOOS := $(shell $(GOCMD) env GOOS)
-GOARCH := $(shell $(GOCMD) env GOARCH)
-TOOLS_MOD_DIR := $(SRC_ROOT)/internal/tools
-TOOLS_MOD_FILE := $(TOOLS_MOD_DIR)/go.mod
-GO_MODULE := $(shell $(GOCMD) list -m -f '{{ .Path }}' )
-GO_TOOL := $(GOCMD) tool -modfile $(TOOLS_MOD_FILE)
-export GOTOOLCHAIN = go$(shell $(GOCMD) list -m -f '{{ .GoVersion }}')
-
-LOCAL_BIN ?= $(SRC_ROOT)/bin
-BINARY    ?= $(LOCAL_BIN)/extension-envoy-gateway
-GOSEC     ?= $(LOCAL_BIN)/gosec
-
-VERSION := $(shell cat VERSION)
-REVISION := $(shell git rev-parse --short HEAD)
-EFFECTIVE_VERSION := $(VERSION)-$(REVISION)
+REPO_ROOT                     := $(shell git rev-parse --show-toplevel)
+HACK_DIR 					  := $(REPO_ROOT)/hack
+SRC_DIRS 					  := $(shell $(GOCMD) list -f '{{ .Dir }}' ./...)
+GOOS 						  := $(shell $(GOCMD) env GOOS)
+GOARCH 						  := $(shell $(GOCMD) env GOARCH)
+TOOLS_MOD_DIR 				  := $(REPO_ROOT)/internal/tools
+TOOLS_MOD_FILE 				  := $(TOOLS_MOD_DIR)/go.mod
+GO_MODULE 					  := $(shell $(GOCMD) list -m -f '{{ .Path }}' )
+GO_TOOL 					  := $(GOCMD) tool -modfile $(TOOLS_MOD_FILE)
+VERSION 					  := $(shell cat VERSION)
+REVISION 					  := $(shell git rev-parse --short HEAD)
+EFFECTIVE_VERSION 			  := $(VERSION)-$(REVISION)
 ifneq ($(strip $(shell git status --porcelain 2>/dev/null)),)
 	EFFECTIVE_VERSION := $(EFFECTIVE_VERSION)-dirty
 endif
+
+export GOTOOLCHAIN = go$(shell $(GOCMD) list -m -f '{{ .GoVersion }}')
+
+LOCAL_BIN ?= $(REPO_ROOT)/bin
+BINARY    ?= $(LOCAL_BIN)/extension-envoy-gateway
+GOSEC     ?= $(LOCAL_BIN)/gosec
 
 # Name and version of the Gardener extension.
 EXTENSION_NAME ?= gardener-extension-envoy-gateway
@@ -91,7 +88,7 @@ ADDLICENSE_OPTS ?= -f $(HACK_DIR)/LICENSE_BOILERPLATE.txt \
 			-ignore "**/Dockerfile"
 
 # Path in which to generate the API reference docs
-API_REF_DOCS ?= $(SRC_ROOT)/docs/api-reference
+API_REF_DOCS ?= $(REPO_ROOT)/docs/api-reference
 
 # Run a command.
 #
@@ -128,7 +125,7 @@ goimports-reviser:
 
 .PHONY: lint
 lint:
-	@$(GO_TOOL) golangci-lint run --config=$(SRC_ROOT)/.golangci.yaml ./...
+	@$(GO_TOOL) golangci-lint run --config=$(REPO_ROOT)/.golangci.yaml ./...
 
 .PHONY: govulncheck
 govulncheck:
@@ -149,11 +146,11 @@ verify: goimports-reviser lint checklicense test sast
 api-ref-docs:
 	@mkdir -p $(API_REF_DOCS)
 	@$(GO_TOOL) crd-ref-docs \
-		--config $(SRC_ROOT)/api-ref-docs.yaml \
+		--config $(REPO_ROOT)/api-ref-docs.yaml \
 		--output-mode group \
 		--output-path $(API_REF_DOCS) \
 		--renderer markdown \
-		--source-path $(SRC_ROOT)/pkg/apis
+		--source-path $(REPO_ROOT)/pkg/apis
 
 .PHONY: build
 build: $(BINARY)  ## Build the extension binary.
@@ -241,10 +238,10 @@ generate-dev-setup:  ## Generate dev-setup example resources (controllerregistra
 	@echo "Generating dev-setup resources ..."
 	@env ext_name="$(EXTENSION_NAME)" ext_type="$(EXTENSION_TYPE)" registry="$(LOCAL_REGISTRY)" version="$(VERSION)" \
 		$(GO_TOOL) yq -n '.apiVersion = "core.gardener.cloud/v1" | .kind = "ControllerDeployment" | .metadata.name = env(ext_name) | .helm.ociRepository.ref = env(registry) + "/helm-charts/" + env(ext_name) + ":" + env(version) | .helm.values.webhook.enabled = true' \
-		| { echo "---"; cat; } > $(SRC_ROOT)/examples/dev-setup/controllerdeployment.yaml
+		| { echo "---"; cat; } > $(REPO_ROOT)/examples/dev-setup/controllerdeployment.yaml
 	@env ext_name="$(EXTENSION_NAME)" ext_type="$(EXTENSION_TYPE)" \
 		$(GO_TOOL) yq -n '.apiVersion = "core.gardener.cloud/v1beta1" | .kind = "ControllerRegistration" | .metadata.name = env(ext_name) | .metadata.annotations."security.gardener.cloud/pod-security-enforce" = "baseline" | .spec.deployment.policy = "OnDemand" | .spec.deployment.deploymentRefs[0].name = env(ext_name) | .spec.resources[0].kind = "Extension" | .spec.resources[0].type = env(ext_type) | .spec.resources[0].workerlessSupported = false | .spec.resources[0].clusterCompatibility[0] = "shoot" | .spec.resources[0].lifecycle.reconcile = "AfterWorker" | .spec.resources[0].lifecycle.delete = "BeforeKubeAPIServer" | .spec.resources[0].lifecycle.migrate = "BeforeKubeAPIServer"' \
-		| { echo "---"; cat; } > $(SRC_ROOT)/examples/dev-setup/controllerregistration.yaml
+		| { echo "---"; cat; } > $(REPO_ROOT)/examples/dev-setup/controllerregistration.yaml
 
 .PHONY: generate-operator-extension
 generate-operator-extension:  ## Generate operator extension example resources.
@@ -252,24 +249,24 @@ generate-operator-extension:  ## Generate operator extension example resources.
 		--name $(EXTENSION_NAME) \
 		--component-category extension \
 		--provider-type $(EXTENSION_TYPE) \
-		--destination $(SRC_ROOT)/examples/operator-extension/base/extension.yaml \
+		--destination $(REPO_ROOT)/examples/operator-extension/base/extension.yaml \
 		--extension-oci-repository $(IMAGE):$(VERSION)
-	@$(GO_TOOL) kustomize build $(SRC_ROOT)/examples/operator-extension
+	@$(GO_TOOL) kustomize build $(REPO_ROOT)/examples/operator-extension
 
 .PHONY: check-helm
 check-helm:  ## Lint helm charts and validate rendered templates.
-	@$(GO_TOOL) helm lint $(SRC_ROOT)/charts/gardener-extension-envoy-gateway
-	@$(GO_TOOL) helm template $(SRC_ROOT)/charts/gardener-extension-envoy-gateway | \
+	@$(GO_TOOL) helm lint $(REPO_ROOT)/charts/gardener-extension-envoy-gateway
+	@$(GO_TOOL) helm template $(REPO_ROOT)/charts/gardener-extension-envoy-gateway | \
 		$(GO_TOOL) kubeconform \
 			$(KUBECONFORM_OPTS) \
 			-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
-	@$(GO_TOOL) helm lint $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime
-	@$(GO_TOOL) helm template $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime | \
+	@$(GO_TOOL) helm lint $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime
+	@$(GO_TOOL) helm template $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime | \
 		$(GO_TOOL) kubeconform \
 			$(KUBECONFORM_OPTS) \
 			-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
-	@$(GO_TOOL) helm lint $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application
-	@$(GO_TOOL) helm template $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application | \
+	@$(GO_TOOL) helm lint $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application
+	@$(GO_TOOL) helm template $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application | \
 		$(GO_TOOL) kubeconform \
 			$(KUBECONFORM_OPTS) \
 			-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
@@ -279,13 +276,13 @@ check-examples:  ## Lint the generated example resources.
 	@echo "Checking example resources ..."
 	@$(GO_TOOL) kubeconform \
 		$(KUBECONFORM_OPTS) \
-		-schema-location "$(SRC_ROOT)/test/schemas/{{.Group}}/{{.ResourceAPIVersion}}/{{.ResourceKind}}.json" \
+		-schema-location "$(REPO_ROOT)/test/schemas/{{.Group}}/{{.ResourceAPIVersion}}/{{.ResourceKind}}.json" \
 		./examples
 	@echo "Checking operator extension resource ..."
-	@$(GO_TOOL) kustomize build $(SRC_ROOT)/examples/operator-extension | \
+	@$(GO_TOOL) kustomize build $(REPO_ROOT)/examples/operator-extension | \
 		$(GO_TOOL) kubeconform \
 			$(KUBECONFORM_OPTS) \
-			-schema-location "$(SRC_ROOT)/test/schemas/{{.Group}}/{{.ResourceAPIVersion}}/{{.ResourceKind}}.json"
+			-schema-location "$(REPO_ROOT)/test/schemas/{{.Group}}/{{.ResourceAPIVersion}}/{{.ResourceKind}}.json"
 
 .PHONY: kind-load-image
 kind-load-image:  ## Load extension images to target cluster.
@@ -296,34 +293,34 @@ kind-load-image:  ## Load extension images to target cluster.
 
 .PHONY: helm-load-chart
 helm-load-chart:  ## Load helm chart to local registry.
-	@$(GO_TOOL) helm package $(SRC_ROOT)/charts/gardener-extension-envoy-gateway --version $(VERSION)
+	@$(GO_TOOL) helm package $(REPO_ROOT)/charts/gardener-extension-envoy-gateway --version $(VERSION)
 	@$(GO_TOOL) helm push --plain-http $(EXTENSION_NAME)-$(VERSION).tgz oci://$(LOCAL_REGISTRY)/helm-charts
 	@rm -f $(EXTENSION_NAME)-$(VERSION).tgz
-	@$(GO_TOOL) helm package $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime --version $(VERSION)
+	@$(GO_TOOL) helm package $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/runtime --version $(VERSION)
 	@$(GO_TOOL) helm push --plain-http admission-envoy-gateway-runtime-$(VERSION).tgz oci://$(LOCAL_REGISTRY)/helm-charts
 	@rm -f admission-envoy-gateway-runtime-$(VERSION).tgz
-	@$(GO_TOOL) helm package $(SRC_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application --version $(VERSION)
+	@$(GO_TOOL) helm package $(REPO_ROOT)/charts/gardener-extension-admission-envoy-gateway/charts/application --version $(VERSION)
 	@$(GO_TOOL) helm push --plain-http admission-envoy-gateway-application-$(VERSION).tgz oci://$(LOCAL_REGISTRY)/helm-charts
 	@rm -f admission-envoy-gateway-application-$(VERSION).tgz
 
 .PHONY: update-version-tags
 update-version-tags:  ## Update version tags in helm charts and example resources based on VERSION file.
 	@env version=$(VERSION) \
-		$(GO_TOOL) yq -i '.version = env(version)' $(SRC_ROOT)/charts/gardener-extension-envoy-gateway/Chart.yaml
+		$(GO_TOOL) yq -i '.version = env(version)' $(REPO_ROOT)/charts/gardener-extension-envoy-gateway/Chart.yaml
 	@env image=$(IMAGE) tag=$(VERSION) \
-		$(GO_TOOL) yq -i '(.image.repository = env(image)) | (.image.tag = env(tag))' $(SRC_ROOT)/charts/gardener-extension-envoy-gateway/values.yaml
+		$(GO_TOOL) yq -i '(.image.repository = env(image)) | (.image.tag = env(tag))' $(REPO_ROOT)/charts/gardener-extension-envoy-gateway/values.yaml
 	@env oci_charts=$(LOCAL_REGISTRY)/helm-charts/$(EXTENSION_NAME):$(VERSION) \
-		$(GO_TOOL) yq -i '.helm.ociRepository.ref = env(oci_charts)' $(SRC_ROOT)/examples/dev-setup/controllerdeployment.yaml
+		$(GO_TOOL) yq -i '.helm.ociRepository.ref = env(oci_charts)' $(REPO_ROOT)/examples/dev-setup/controllerdeployment.yaml
 	@env oci_charts=$(LOCAL_REGISTRY)/helm-charts/$(EXTENSION_NAME):$(VERSION) \
-		$(GO_TOOL) yq -i '.spec.deployment.extension.helm.ociRepository.ref = env(oci_charts)' $(SRC_ROOT)/examples/operator-extension/base/extension.yaml
+		$(GO_TOOL) yq -i '.spec.deployment.extension.helm.ociRepository.ref = env(oci_charts)' $(REPO_ROOT)/examples/operator-extension/base/extension.yaml
 	@env oci_charts=$(LOCAL_REGISTRY)/helm-charts/admission-envoy-gateway-runtime:$(VERSION) \
-		$(GO_TOOL) yq -i '.spec.deployment.admission.runtimeCluster.helm.ociRepository.ref = env(oci_charts)' $(SRC_ROOT)/examples/operator-extension/base/extension.yaml
+		$(GO_TOOL) yq -i '.spec.deployment.admission.runtimeCluster.helm.ociRepository.ref = env(oci_charts)' $(REPO_ROOT)/examples/operator-extension/base/extension.yaml
 	@env oci_charts=$(LOCAL_REGISTRY)/helm-charts/admission-envoy-gateway-application:$(VERSION) \
-		$(GO_TOOL) yq -i '.spec.deployment.admission.virtualCluster.helm.ociRepository.ref = env(oci_charts)' $(SRC_ROOT)/examples/operator-extension/base/extension.yaml
+		$(GO_TOOL) yq -i '.spec.deployment.admission.virtualCluster.helm.ociRepository.ref = env(oci_charts)' $(REPO_ROOT)/examples/operator-extension/base/extension.yaml
 	@env image=$(IMAGE) tag=$(VERSION) \
-		$(GO_TOOL) yq -i '(.spec.deployment.extension.values.image.repository = env(image)) | (.spec.deployment.extension.values.image.tag = env(tag))' $(SRC_ROOT)/examples/operator-extension/patches/extension.yaml
+		$(GO_TOOL) yq -i '(.spec.deployment.extension.values.image.repository = env(image)) | (.spec.deployment.extension.values.image.tag = env(tag))' $(REPO_ROOT)/examples/operator-extension/patches/extension.yaml
 	@env image=$(IMAGE) tag=$(VERSION) \
-		$(GO_TOOL) yq -i '(.spec.deployment.admission.values.image.repository = env(image)) | (.spec.deployment.admission.values.image.tag = env(tag))' $(SRC_ROOT)/examples/operator-extension/patches/extension.yaml
+		$(GO_TOOL) yq -i '(.spec.deployment.admission.values.image.repository = env(image)) | (.spec.deployment.admission.values.image.tag = env(tag))' $(REPO_ROOT)/examples/operator-extension/patches/extension.yaml
 
 deploy deploy-operator: export IMAGE=$(LOCAL_REGISTRY)/extensions/$(EXTENSION_NAME)
 
@@ -333,7 +330,7 @@ deploy: generate update-version-tags docker-build docker-push helm-load-chart  #
 
 .PHONY: undeploy
 undeploy:  ## Cleanup the deployed extension.
-	@$(GO_TOOL) kustomize build $(SRC_ROOT)/examples/dev-setup | \
+	@$(GO_TOOL) kustomize build $(REPO_ROOT)/examples/dev-setup | \
 		kubectl delete --ignore-not-found=true -f -
 
 .PHONY: deploy-operator
@@ -342,5 +339,5 @@ deploy-operator: generate update-version-tags docker-build docker-push helm-load
 
 .PHONY: undeploy-operator
 undeploy-operator:  ## Cleanup the deployed operator extension.
-	@$(GO_TOOL) kustomize build $(SRC_ROOT)/examples/operator-extension | \
+	@$(GO_TOOL) kustomize build $(REPO_ROOT)/examples/operator-extension | \
 		kubectl delete --ignore-not-found=true -f -
