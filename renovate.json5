@@ -4,6 +4,7 @@
     enabled: true,
   },
   extends: [
+    'helpers:pinGitHubActionDigests',
     'config:recommended',
     'github>gardener/ci-infra//config/renovate/automerge-with-tide.json5',
   ],
