@@ -50,7 +50,7 @@ jobs:
           # the dev-setup / operator-extension example resources). This prevents the committed-back
           # patch from carrying arbitrary content a branch's Makefile might have produced elsewhere
           # in the tree.
-          git add -A -- 'pkg/apis/**' 'examples/dev-setup/**' 'examples/operator-extension/**'
+          git add -A -- 'pkg/apis/**' 'examples/dev-setup/**' 'examples/operator-extension/**' 'renovate.json5'
           if git diff --cached --quiet; then
             echo "has-changes=false" >> "${GITHUB_OUTPUT}"
           else
