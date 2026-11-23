@@ -8,10 +8,14 @@
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+ENSURE_GARDENER_MOD           := $(shell go get github.com/gardener/gardener@$$(go list -m -f "{{.Version}}" github.com/gardener/gardener))
+GARDENER_HACK_DIR             := $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
+
 GOCMD?= go
 SRC_ROOT := $(shell git rev-parse --show-toplevel)
 HACK_DIR := $(SRC_ROOT)/hack
 SRC_DIRS := $(shell $(GOCMD) list -f '{{ .Dir }}' ./...)
+REPO_ROOT                     := $(SRC_ROOT)
 
 GOOS := $(shell $(GOCMD) env GOOS)
 GOARCH := $(shell $(GOCMD) env GOARCH)
@@ -230,6 +234,7 @@ checklicense:
 generate: generate-dev-setup  ## Run code-generator tools.
 	@echo "Running code-generator tools ..."
 	$(foreach gen_tool,$(K8S_GEN_TOOLS),$(call run-command,$(GO_TOOL) $(gen_tool) -v=$(K8S_GEN_TOOLS_LOG_LEVEL) ./pkg/apis/...))
+	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) RENOVATE_CONFIG=$(REPO_ROOT)/renovate.json5 bash $(GARDENER_HACK_DIR)/generate-renovate-ignore-deps.sh
 
 .PHONY: generate-dev-setup
 generate-dev-setup:  ## Generate dev-setup example resources (controllerregistration and controllerdeployment).
