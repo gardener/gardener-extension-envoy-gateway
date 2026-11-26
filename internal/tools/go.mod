@@ -125,7 +125,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.6 // indirect
 	github.com/fzipp/gocyclo v0.6.0 // indirect
-	github.com/gardener/gardener v1.154.6 // indirect
+	github.com/gardener/gardener v1.155.2 // indirect
 	github.com/gardener/gardener/pkg/apis v1.154.0 // indirect
 	github.com/ghostiam/protogetter v1.0.1 // indirect
 	github.com/go-critic/go-critic v0.15.0 // indirect
@@ -381,7 +381,7 @@ require (
 	k8s.io/component-base v0.37.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
+	k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098 // indirect
 	k8s.io/kubectl v0.37.2 // indirect
 	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab // indirect
 	mvdan.cc/gofumpt v0.12.0 // indirect
